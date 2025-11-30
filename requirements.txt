@@ -1,4 +1,4 @@
-pyTelegramBotAPI
-fastapi
-uvicorn
-python-multipart
+pyTelegramBotAPI==4.15.4
+Flask==2.3.3
+gunicorn==21.2.0
+requests
