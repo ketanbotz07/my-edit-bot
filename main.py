@@ -1,7 +1,11 @@
 import os
 import subprocess
+import threading
 from telebot import TeleBot, types
+from fastapi import FastAPI
+import uvicorn
 
+# Telegram Bot
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = TeleBot(BOT_TOKEN)
 
@@ -38,7 +42,26 @@ def video_handler(message):
     bot.reply_to(message, "✅ Done! Your video is ready.")
 
 
-if __name__ == "__main__":
+# ---------------------
+# FASTAPI HEALTH SERVER
+# ---------------------
+app = FastAPI()
+
+@app.get("/")
+def home():
+    return {"status": "running", "message": "Telegram Bot Active"}
+
+
+# Function to run Telegram bot
+def run_bot():
     print("Bot started successfully!")
     bot.infinity_polling()
-  
+
+
+if __name__ == "__main__":
+    # Run Telegram bot in background thread
+    threading.Thread(target=run_bot).start()
+
+    # Run web server for Koyeb health check
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
