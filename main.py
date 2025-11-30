@@ -1,18 +1,24 @@
 import os
 import subprocess
-from telebot import TeleBot, types
 from fastapi import FastAPI, Request
+import telebot
 import uvicorn
+import threading
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # <-- ADD THIS
+WEBHOOK_URL = "https://crowded-shirlee-vishalkumar23-14f319a4.koyeb.app/webhook"
 
-bot = TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN)
 app = FastAPI()
 
+
+# -----------------------------
+# VIDEO EDIT FUNCTION
+# -----------------------------
 def edit_video(input_path, output_path):
     cmd = [
-        "ffmpeg", "-y",
+        "ffmpeg",
+        "-y",
         "-i", input_path,
         "-vf", "crop=in_w:in_h-80:0:40,scale=1280:-1",
         "-af", "atempo=1.03",
@@ -21,9 +27,13 @@ def edit_video(input_path, output_path):
     ]
     subprocess.run(cmd)
 
-@bot.message_handler(content_types=['video'])
+
+# -----------------------------
+# TELEGRAM BOT HANDLER
+# -----------------------------
+@bot.message_handler(content_types=["video"])
 def video_handler(message):
-    bot.send_message(message.chat.id, "⏳ Editing your video...")
+    bot.reply_to(message, "⏳ Editing your video... Please wait...")
 
     file_info = bot.get_file(message.video.file_id)
     downloaded = bot.download_file(file_info.file_path)
@@ -37,25 +47,39 @@ def video_handler(message):
     edit_video(input_path, output_path)
 
     bot.send_video(message.chat.id, video=open(output_path, "rb"))
-    bot.send_message(message.chat.id, "✅ Done!")
+    bot.reply_to(message, "✅ Done! Your edited video is ready!")
 
-# ROOT PAGE
+
+# -----------------------------
+# FASTAPI ENDPOINTS
+# -----------------------------
 @app.get("/")
 def home():
-    return {"status": "ok", "message": "Bot Running"}
+    return {"status": "ok", "message": "Bot Running with Webhook"}
 
-# TELEGRAM WEBHOOK HANDLER
-@app.post(f"/{BOT_TOKEN}")
-async def webhook(request: Request):
-    json_data = await request.json()
-    update = types.Update.de_json(json_data)
+
+@app.post("/webhook")
+async def telegram_webhook(request: Request):
+    data = await request.json()
+    update = telebot.types.Update.de_json(data)
     bot.process_new_updates([update])
     return {"ok": True}
 
-if __name__ == "__main__":
-    # Set webhook
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL + BOT_TOKEN)
 
-    port = int(os.environ.get("PORT", 8000))
+# -----------------------------
+# SET WEBHOOK
+# -----------------------------
+def set_webhook():
+    bot.remove_webhook()
+    bot.set_webhook(url=WEBHOOK_URL)
+    print("Webhook set successfully!")
+
+
+# -----------------------------
+# MAIN
+# -----------------------------
+if __name__ == "__main__":
+    set_webhook()
+
+    port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
