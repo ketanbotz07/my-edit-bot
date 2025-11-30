@@ -1,7 +1,7 @@
 import os
 import subprocess
 import threading
-from telebot import TeleBot, types
+from telebot import TeleBot
 from fastapi import FastAPI
 import uvicorn
 
@@ -25,7 +25,7 @@ def edit_video(input_path, output_path):
 
 @bot.message_handler(content_types=['video'])
 def video_handler(message):
-    msg = bot.reply_to(message, "⏳ Editing your video... Please wait.")
+    bot.reply_to(message, "⏳ Editing your video... Please wait...")
 
     file_info = bot.get_file(message.video.file_id)
     downloaded = bot.download_file(file_info.file_path)
@@ -39,29 +39,32 @@ def video_handler(message):
     edit_video(input_path, output_path)
 
     bot.send_video(message.chat.id, video=open(output_path, "rb"))
-    bot.reply_to(message, "✅ Done! Your video is ready.")
+    bot.reply_to(message, "✅ Done! Your edited video is ready!")
 
 
 # ---------------------
-# FASTAPI HEALTH SERVER
+# FASTAPI WEB SERVER
 # ---------------------
 app = FastAPI()
 
 @app.get("/")
 def home():
-    return {"status": "running", "message": "Telegram Bot Active"}
+    return {"status": "ok", "message": "Bot Running"}
 
 
-# Function to run Telegram bot
 def run_bot():
     print("Bot started successfully!")
-    bot.infinity_polling()
+    bot.infinity_polling(skip_pending=True)
+
+
+def run_web():
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":
-    # Run Telegram bot in background thread
+    # Run Telegram bot in background
     threading.Thread(target=run_bot).start()
 
-    # Run web server for Koyeb health check
-    port = int(os.environ.get("PORT", 8080))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    # Run FastAPI server (main thread)
+    run_web()
