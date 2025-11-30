@@ -59,12 +59,15 @@ def run_bot():
 
 def run_web():
     port = int(os.environ.get("PORT", 8080))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(
+        "main:app",       # IMPORTANT
+        host="0.0.0.0",
+        port=port,
+        reload=False,     # MUST be disabled
+        workers=1         # MUST be 1
+    )
 
 
 if __name__ == "__main__":
-    # Run Telegram bot in background
-    threading.Thread(target=run_bot).start()
-
-    # Run FastAPI server (main thread)
+    threading.Thread(target=run_bot, daemon=True).start()
     run_web()
