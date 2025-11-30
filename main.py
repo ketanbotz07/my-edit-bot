@@ -1,73 +1,55 @@
-import os
-import subprocess
-import threading
-from telebot import TeleBot
-from fastapi import FastAPI
-import uvicorn
+from flask import Flask, request
+import telebot
 
-# Telegram Bot
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-bot = TeleBot(BOT_TOKEN)
+TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+WEBHOOK_URL = "https://YOUR-KOYEB-APP-URL.koyeb.app/webhook"
 
+bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
 
-def edit_video(input_path, output_path):
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-i", input_path,
-        "-vf", "crop=in_w:in_h-80:0:40,scale=1280:-1",
-        "-af", "atempo=1.03",
-        "-preset", "veryfast",
-        output_path
-    ]
-    subprocess.run(cmd)
+# -----------------------------
+# Telegram Webhook Receiver
+# -----------------------------
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    json_update = request.get_json()
+    if json_update:
+        bot.process_new_updates([telebot.types.Update.de_json(json_update)])
+    return "OK", 200
 
 
-@bot.message_handler(content_types=['video'])
-def video_handler(message):
-    bot.reply_to(message, "⏳ Editing your video... Please wait...")
-
-    file_info = bot.get_file(message.video.file_id)
-    downloaded = bot.download_file(file_info.file_path)
-
-    input_path = "input.mp4"
-    output_path = "edited.mp4"
-
-    with open(input_path, "wb") as f:
-        f.write(downloaded)
-
-    edit_video(input_path, output_path)
-
-    bot.send_video(message.chat.id, video=open(output_path, "rb"))
-    bot.reply_to(message, "✅ Done! Your edited video is ready!")
+# -----------------------------
+# Commands / Handlers
+# -----------------------------
+@bot.message_handler(commands=['start'])
+def start(msg):
+    bot.reply_to(msg, "Bot Webhook Mode me chal raha hai sir! 👌🔥")
 
 
-# ---------------------
-# FASTAPI WEB SERVER
-# ---------------------
-app = FastAPI()
+@bot.message_handler(func=lambda m: True)
+def echo(msg):
+    bot.reply_to(msg, f"Received: {msg.text}")
 
-@app.get("/")
+
+# -----------------------------
+# Flask Root Test Route
+# -----------------------------
+@app.route('/')
 def home():
-    return {"status": "ok", "message": "Bot Running"}
+    return "Telegram Webhook Bot Running Successfully!"
 
 
-def run_bot():
-    print("Bot started successfully!")
-    bot.infinity_polling(skip_pending=True)
-
-
-def run_web():
-    port = int(os.environ.get("PORT", 8080))
-    uvicorn.run(
-        "main:app",       # IMPORTANT
-        host="0.0.0.0",
-        port=port,
-        reload=False,     # MUST be disabled
-        workers=1         # MUST be 1
-    )
-
-
+# -----------------------------
+# Set Webhook on Startup
+# -----------------------------
 if __name__ == "__main__":
-    threading.Thread(target=run_bot, daemon=True).start()
-    run_web()
+    # Pehle purana webhook remove करो
+    bot.remove_webhook()
+
+    # Naya webhook set karo
+    bot.set_webhook(url=WEBHOOK_URL)
+
+    print("Webhook set successfully:", WEBHOOK_URL)
+
+    # Flask App Run
+    app.run(host="0.0.0.0", port=8000)
