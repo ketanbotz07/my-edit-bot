@@ -1,22 +1,15 @@
 import os
 import subprocess
-from telebot import TeleBot, types
-from fastapi import FastAPI, Request
+import threading
+from telebot import TeleBot
+from fastapi import FastAPI
 import uvicorn
 
-# ---------------------
-# BOT SETUP
-# ---------------------
+# Telegram Bot
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
-
 bot = TeleBot(BOT_TOKEN)
-app = FastAPI()
 
 
-# ---------------------
-# VIDEO EDIT FUNCTION
-# ---------------------
 def edit_video(input_path, output_path):
     cmd = [
         "ffmpeg",
@@ -30,12 +23,9 @@ def edit_video(input_path, output_path):
     subprocess.run(cmd)
 
 
-# ---------------------
-# MESSAGE HANDLER
-# ---------------------
 @bot.message_handler(content_types=['video'])
 def video_handler(message):
-    bot.reply_to(message, "⏳ Editing your video... please wait...")
+    bot.reply_to(message, "⏳ Editing your video... Please wait...")
 
     file_info = bot.get_file(message.video.file_id)
     downloaded = bot.download_file(file_info.file_path)
@@ -49,37 +39,35 @@ def video_handler(message):
     edit_video(input_path, output_path)
 
     bot.send_video(message.chat.id, video=open(output_path, "rb"))
-    bot.reply_to(message, "✅ Done! Video edited.")
+    bot.reply_to(message, "✅ Done! Your edited video is ready!")
 
 
 # ---------------------
-# WEBHOOK ROUTES
+# FASTAPI WEB SERVER
 # ---------------------
-@app.post("/")
-async def telegram_webhook(req: Request):
-    data = await req.json()
-    bot.process_new_updates([types.Update.de_json(data)])
-    return {"ok": True}
-
+app = FastAPI()
 
 @app.get("/")
 def home():
-    return {"status": "running", "bot": "ok"}
+    return {"status": "ok", "message": "Bot Running"}
 
 
-# ---------------------
-# STARTUP EVENT
-# ---------------------
-@app.on_event("startup")
-async def set_webhook():
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
-    print("Webhook set successfully!")
+def run_bot():
+    print("Bot started successfully!")
+    bot.infinity_polling(skip_pending=True)
 
 
-# ---------------------
-# MAIN
-# ---------------------
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+def run_web():
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(
+        "main:app",       # IMPORTANT
+        host="0.0.0.0",
+        port=port,
+        reload=False,     # MUST be disabled
+        workers=1         # MUST be 1
+    )
+
+
+if name == "main":
+    threading.Thread(target=run_bot, daemon=True).start()
+    run_web()
