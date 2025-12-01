@@ -1,3 +1,4 @@
-flask==3.0.0
-pyTelegramBotAPI
-requests
+Flask==3.0.2
+pyTelegramBotAPI==4.16.1
+gunicorn==21.2.0
+ffmpeg-python
