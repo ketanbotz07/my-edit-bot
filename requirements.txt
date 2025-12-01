@@ -1,4 +1,3 @@
 flask==3.0.0
-pytelegrambotapi
-gunicorn
-ffmpeg-python
+pyTelegramBotAPI
+requests
