@@ -4,9 +4,10 @@ from flask import Flask, request
 import telebot
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Example: https://your-app.koyeb.app/webhook
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 bot = telebot.TeleBot(BOT_TOKEN, threaded=False)
+
 app = Flask(__name__)
 
 
@@ -46,8 +47,9 @@ def handle_video(message):
 
 
 # --------------------------
-# FLASK ROUTES
+# WEBHOOK SETUP
 # --------------------------
+
 @app.route("/", methods=["GET"])
 def home():
     return "Bot is running OK!"
@@ -62,21 +64,20 @@ def webhook():
 
 
 # --------------------------
-# SET WEBHOOK ON STARTUP
+# FLASK 3 SAFE STARTUP WEBHOOK
 # --------------------------
-def setup_webhook():
+with app.app_context():
     try:
         bot.remove_webhook()
-        bot.set_webhook(url=WEBHOOK_URL)
-        print("Webhook set:", WEBHOOK_URL)
-    except Exception as e:
-        print("Webhook error:", e)
+    except:
+        pass
+    bot.set_webhook(url=WEBHOOK_URL)
+    print("Webhook set:", WEBHOOK_URL)
 
 
 # --------------------------
 # START SERVER
 # --------------------------
 if __name__ == "__main__":
-    setup_webhook()
     port = int(os.getenv("PORT", 8000))
     app.run(host="0.0.0.0", port=port)
