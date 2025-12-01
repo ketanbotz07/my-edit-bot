@@ -7,13 +7,9 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 bot = telebot.TeleBot(BOT_TOKEN, threaded=False)
-
 app = Flask(__name__)
 
 
-# --------------------------
-# VIDEO EDIT FUNCTION
-# --------------------------
 def edit_video(input_path, output_path):
     cmd = [
         "ffmpeg",
@@ -27,9 +23,6 @@ def edit_video(input_path, output_path):
     subprocess.run(cmd)
 
 
-# --------------------------
-# TELEGRAM HANDLER
-# --------------------------
 @bot.message_handler(content_types=["video"])
 def handle_video(message):
     bot.reply_to(message, "⏳ Editing your video...")
@@ -46,10 +39,6 @@ def handle_video(message):
     bot.reply_to(message, "✅ Done!")
 
 
-# --------------------------
-# WEBHOOK SETUP
-# --------------------------
-
 @app.route("/", methods=["GET"])
 def home():
     return "Bot is running OK!"
@@ -57,27 +46,19 @@ def home():
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    json_data = request.get_data().decode("utf-8")
+    json_data = request.get_data().decode()
     update = telebot.types.Update.de_json(json_data)
     bot.process_new_updates([update])
     return "OK", 200
 
 
-# --------------------------
-# FLASK 3 SAFE STARTUP WEBHOOK
-# --------------------------
+# Run webhook instantly (Flask 3 compatible)
 with app.app_context():
-    try:
-        bot.remove_webhook()
-    except:
-        pass
+    bot.remove_webhook()
     bot.set_webhook(url=WEBHOOK_URL)
     print("Webhook set:", WEBHOOK_URL)
 
 
-# --------------------------
-# START SERVER
-# --------------------------
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     app.run(host="0.0.0.0", port=port)
